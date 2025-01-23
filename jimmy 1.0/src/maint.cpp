@@ -3,6 +3,7 @@
 #include <RF24.h>
 #include <nRF24L01.h>
 #include <SPI.h>
+#include <SD.h>
 #include <stdarg.h>
 
 
@@ -22,8 +23,6 @@ struct data
   int16_t ax = 0, ay = 1, az = 2, gx = 3, gy = 4, gz = 5;
 };
 data dat1;
-
-void sendData();
 
 void setup()
 {

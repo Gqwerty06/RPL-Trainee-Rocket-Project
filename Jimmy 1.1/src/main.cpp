@@ -26,7 +26,7 @@ void setup()
   radio.setPALevel(RF24_PA_MAX, 0);
   radio.setChannel(chan);
   Serial.begin(115200);
-  Serial.println("Starting to send: ");
+  Serial.println("Starting to read: ");
   radio.openReadingPipe(1, addy[0]);
 
   //IMU int.
