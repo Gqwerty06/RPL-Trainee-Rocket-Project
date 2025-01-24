@@ -5,10 +5,11 @@
 #include <SPI.h>
 #include <SD.h>
 #include <stdarg.h>
+#include <TinyGPS++.h>
 
 //pin declares for chip selects
-#define RF_CS
-#define SD_CS
+#define RF_CS 1
+#define SD_CS 2
 
 RF24 radio; // CE, CSN
 
@@ -21,6 +22,7 @@ struct data
   int16_t ax = 0, ay = 1, az = 2, gx = 3, gy = 4, gz = 5;
 };
 data dat1;
+data gpsData;
 
 void setup()
 {
@@ -36,19 +38,32 @@ void setup()
 String buff, buf;
 void loop()
 {
+  delay(50);
   sendData();
-  delay(75);
-  digitalWrite(RF_CS, LOW);
+  SDWrite();
 }
 
 
 void sendData()
 {
+  digitalWrite(RF_CS, LOW);
   radio.stopListening();
   buff = String(dat1.ax) + "\t" + String(dat1.ay) + "\t" + String(dat1.az) + "\t" + String(dat1.gx) + "\t" + String(dat1.gy)
     + "\t" + String(dat1.gz);
   Serial.println("Sending: ");
   Serial.println(buff);
   radio.write(&dat1, sizeof(data));
+  digitalWrite(RF_CS, HIGH);
 }
 
+void SDWrite()
+{
+  digitalWrite(SD_CS, LOW);
+
+  digitalWrite(SD_CS, HIGH);
+}
+
+void readGPS()
+{
+  Serial.print("replace");
+}
