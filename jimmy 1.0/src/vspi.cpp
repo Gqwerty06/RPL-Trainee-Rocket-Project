@@ -38,6 +38,7 @@ void loop()
 {
   sendData();
   delay(75);
+  digitalWrite(RF_CS, LOW);
 }
 
 
