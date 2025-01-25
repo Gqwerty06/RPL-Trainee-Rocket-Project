@@ -5,7 +5,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <stdarg.h>
-#include <TinyGPS++.h>
+#include <TinyGPSPlus.h>
 
 //pin declares for chip selects
 #define RF_CS 1
@@ -16,6 +16,8 @@ RF24 radio; // CE, CSN
 const byte addy[][6] = {"00001","00002"};
 const uint8_t chan = 105;
 
+//gps declare
+TinyGPSPlus gps;
 
 struct data
 {
@@ -66,4 +68,7 @@ void SDWrite()
 void readGPS()
 {
   Serial.print("replace");
+  gpsData.ax= gps.location.lat();
+  gpsData.ay= gps.location.lng();
+
 }
