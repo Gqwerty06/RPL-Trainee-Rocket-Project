@@ -11,7 +11,7 @@
 #include <MPU6050.h>
 
 //pin declares for chip selects
-#define RF_CS 1
+#define RF_CS 5
 #define SD_CS 2
 
 //radio setups
@@ -33,7 +33,7 @@ data dat1;
 void setup()
 {
   //radio initializations
-  radio.begin(27,15);
+  radio.begin(4,5);
   radio.setPALevel(RF24_PA_MAX, 0);
   radio.setChannel(chan);
   Serial.begin(115200);
@@ -79,10 +79,10 @@ void dataGather()
   //dat1.lon= gps.location.lng();
 
   //mpu data write
-  mpu.getMotion6(&dat1.ax, &dat1.ay, &dat1.az, &dat1.gx, &dat1.gy, &dat1.gz);
+  //mpu.getMotion6(&dat1.ax, &dat1.ay, &dat1.az, &dat1.gx, &dat1.gy, &dat1.gz);
   
   //bmp altitude get
-  dat1.alt = bmp.readAltitude(1013.25); //average value, measure and change onsite for more accurate measurement
+  //dat1.alt = bmp.readAltitude(1013.25); //average value, measure and change onsite for more accurate measurement
 }
 
 void loop()

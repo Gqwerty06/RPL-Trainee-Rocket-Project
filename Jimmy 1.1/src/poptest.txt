@@ -1,0 +1,54 @@
+//nrf RX Code
+#include <Arduino.h>
+#include <RF24.h>
+#include <nRF24L01.h>
+#include <SPI.h>
+#include <stdarg.h>
+#include <Wire.h>
+
+#define CE 
+
+RF24 radio; // CE, CS
+
+//declare gyrovars
+bool tf = false;
+
+const byte addy[][6] = {"00001","00002"};
+const uint8_t chan = 105;
+
+/*struct data
+{
+  int16_t ax, ay, az, gx, gy, gz;
+};
+data dat1, dat2;
+*/
+//void recData();
+void pop();
+
+#define LED 2
+void setup() {
+  // Set pin mode
+  pinMode(LED,OUTPUT);
+  Serial.begin(115200);
+}
+
+void loop() {
+  pop();
+  while (tf == true){
+  delay(500);
+  digitalWrite(LED,HIGH);
+  delay(500);
+  digitalWrite(LED,LOW);
+  }
+}
+
+void pop(){
+  while (Serial.available() == 0) {
+  }
+  int num1 = Serial.parseInt();
+  if (num1 == 0){
+    tf = true;
+  } else {
+    Serial.println("denied");
+  }
+}
