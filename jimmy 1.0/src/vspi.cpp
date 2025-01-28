@@ -75,9 +75,6 @@ void loop()
   dataGather();
   sendData();
   SDWrite();
-
-  //# of satelites 
-  Serial.println("Number of satellites"+ gps.satellites.value());
 }
 
 void sendData()
@@ -104,6 +101,7 @@ void dataGather()
   //lat long data get
   dat1.lat= gps.location.lat();
   dat1.lon= gps.location.lng();
+  dat1.satNum = gps.satellites.value();
 
   //mpu data write
   mpu.getMotion6(&dat1.ax, &dat1.ay, &dat1.az, &dat1.gx, &dat1.gy, &dat1.gz);
