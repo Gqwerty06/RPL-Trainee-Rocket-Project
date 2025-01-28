@@ -32,8 +32,8 @@ SoftwareSerial ss(16, 17); // for the gps
 
 struct data
 {
-  int16_t alt = 0, ax = 2, ay = 3, az = 4, gx = 0, gy = 1, gz= 0;
-  float lat, lon;
+  int16_t ax, ay, az, gx, gy, gz, satNum;
+  float lat, lon, alt;
 };
 data dat1;
 
@@ -47,7 +47,7 @@ void dataGather();
 void setup()
 {
   //radio initializations
-  radio.begin(27,15);
+  radio.begin(4,5);
   radio.setPALevel(RF24_PA_MAX, 0);
   radio.setChannel(chan);
   Serial.begin(115200);
@@ -77,14 +77,14 @@ void loop()
   SDWrite();
 
   //# of satelites 
-  Serial.println("Number of satellites"+gps.satellites.value());
+  Serial.println("Number of satellites"+ gps.satellites.value());
 }
 
 void sendData()
 {
   digitalWrite(RF_CS, LOW);
   radio.stopListening();
-  buff = String(dat1.lat) + "\t" + String(dat1.lon) + "\t" + String(dat1.alt) + "\t" + String(dat1.ax) + "\t" + String(dat1.ay)
+  buff = String(dat1.lat) + "\t" + String(dat1.lon) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum) + "\t" + String(dat1.ax) + "\t" + String(dat1.ay)
     + "\t" + String(dat1.az) + "\t" + String(dat1.gx) + "\t" + String(dat1.gy) + "\t" + String(dat1.gz);
   Serial.println("Sending: ");
   Serial.println(buff);
