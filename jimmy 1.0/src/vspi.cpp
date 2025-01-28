@@ -9,6 +9,7 @@
 #include <Adafruit_BMP3XX.h>
 #include <Adafruit_Sensor.h>
 #include <MPU6050.h>
+#include <SoftwareSerial.h>
 
 //pin declares for chip selects
 #define RF_CS 5
@@ -18,40 +19,66 @@
 const byte addy[][6] = {"00001","00002"};
 const uint8_t chan = 105;
 
+//reference altitude float
+float refAlt;
+
 //Module declares
 TinyGPSPlus gps;
 RF24 radio; // CE, CSN
 Adafruit_BMP3XX bmp;
 MPU6050 mpu; // Set up IMU
 
+SoftwareSerial ss(16, 17); // for the gps
+
 struct data
 {
-  int16_t lat = 0, lon = 1, alt = 0, ax = 2, ay = 3, az = 4, gx = 0, gy = 1, gz= 0;
+  int16_t alt = 0, ax = 2, ay = 3, az = 4, gx = 0, gy = 1, gz= 0;
+  float lat, lon;
 };
 data dat1;
+
+String buff, buf;
+
+//method declares
+void sendData();
+void SDWrite();
+void dataGather();
 
 void setup()
 {
   //radio initializations
-  radio.begin(4,5);
+  radio.begin(27,15);
   radio.setPALevel(RF24_PA_MAX, 0);
   radio.setChannel(chan);
   Serial.begin(115200);
   Serial.println("Starting to send: ");
   radio.openWritingPipe(addy[0]);
 
-  //imu and mpu start declare
+  //imu mpu and gps start declare
   bmp.begin_I2C();
   mpu.initialize();
+  ss.begin(4800);
 
   //BMP390 setup- oversampling and filtering
   bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
   bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   bmp.setOutputDataRate(BMP3_ODR_50_HZ);
+
+  //refernce altitude for calculation
+  refAlt = bmp.readAltitude(1013.25);
 }
 
-String buff, buf;
+void loop()
+{
+  delay(50);
+  dataGather();
+  sendData();
+  SDWrite();
+
+  //# of satelites 
+  Serial.println("Number of satellites"+gps.satellites.value());
+}
 
 void sendData()
 {
@@ -75,22 +102,14 @@ void SDWrite()
 void dataGather()
 {
   //lat long data get
-  //dat1.lat= gps.location.lat();
-  //dat1.lon= gps.location.lng();
+  dat1.lat= gps.location.lat();
+  dat1.lon= gps.location.lng();
 
   //mpu data write
-  //mpu.getMotion6(&dat1.ax, &dat1.ay, &dat1.az, &dat1.gx, &dat1.gy, &dat1.gz);
+  mpu.getMotion6(&dat1.ax, &dat1.ay, &dat1.az, &dat1.gx, &dat1.gy, &dat1.gz);
   
   //bmp altitude get
-  //dat1.alt = bmp.readAltitude(1013.25); //average value, measure and change onsite for more accurate measurement
-}
-
-void loop()
-{
-  delay(50);
-  dataGather();
-  sendData();
-  SDWrite();
+  dat1.alt = (bmp.readAltitude(1013.25)); //average value, measure and change onsite for more accurate measurement
 }
 
 //launch states- change data collection rate and operations
