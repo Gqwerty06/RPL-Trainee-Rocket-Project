@@ -23,12 +23,13 @@ const uint8_t chan = 105;
 float refAlt;
 
 //Module declares
+SoftwareSerial gpsSerial(17, 16);
 TinyGPSPlus gps;
 RF24 radio; // CE, CSN
 Adafruit_BMP3XX bmp;
 MPU6050 mpu; // Set up IMU
 
-SoftwareSerial ss(16, 17); // for the gps
+SoftwareSerial ss(17, 16); // for the gps
 
 struct data
 {
@@ -57,7 +58,7 @@ void setup()
   //imu mpu and gps start declare
   bmp.begin_I2C();
   mpu.initialize();
-  ss.begin(4800);
+  gpsSerial.begin(9600); // connect gps sensor
 
   //BMP390 setup- oversampling and filtering
   bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
@@ -99,10 +100,14 @@ void SDWrite()
 void dataGather()
 {
   //lat long data get
-  dat1.lat= gps.location.lat();
-  dat1.lon= gps.location.lng();
-  dat1.satNum = gps.satellites.value();
-
+   while (gpsSerial.available())     // check for gps data
+  {
+    if (gps.encode(gpsSerial.read()))   // encode gps data
+    {
+      dat1.lat= gps.location.lat();
+      dat1.lon= gps.location.lng();
+    }
+  }
   //mpu data write
   mpu.getMotion6(&dat1.ax, &dat1.ay, &dat1.az, &dat1.gx, &dat1.gy, &dat1.gz);
   
@@ -112,4 +117,4 @@ void dataGather()
 
 //launch states- change data collection rate and operations
 //Zero sensors at launch site
-//physical seperation between recovery system and power
+//physical seperation between recovery system and power9
