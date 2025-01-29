@@ -14,7 +14,7 @@
 
 //pin declares for chip selects
 #define RF_CS 5
-#define SD_CS 2
+#define SD_CS 33
 
 //radio setups
 const byte addy[][6] = {"00001","00002"};
@@ -29,7 +29,7 @@ TinyGPSPlus gps;
 RF24 radio; // CE, CSN
 Adafruit_BMP3XX bmp;
 MPU6050 mpu; // Set up IMU
-File file;
+File dataFile;
 
 SoftwareSerial ss(17, 16); // for the gps
 
@@ -51,11 +51,12 @@ void dataGather();
 
 void setup()
 {
+  Serial.begin(115200);
+
   //radio initializations
   radio.begin(4,5);
   radio.setPALevel(RF24_PA_MAX, 0);
   radio.setChannel(chan);
-  Serial.begin(115200);
   Serial.println("Starting to send: ");
   radio.openWritingPipe(addy[0]);
 
@@ -63,6 +64,7 @@ void setup()
   bmp.begin_I2C();
   mpu.initialize();
   gpsSerial.begin(9600); // connect gps sensor, default baud rate for L80 is 9600
+  SD.begin(SD_CS);
 
   //BMP390 setup- oversampling and filtering
   bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
@@ -79,10 +81,7 @@ void loop()
   delay(50);
   dataGather();
   sendData();
-  file = SD.open("file", FILE_WRITE);
-  if (file){
-    SDWrite();
-  }
+  SDWrite();
 }
 
 /* 
@@ -108,12 +107,19 @@ void sendData()
 }
 
 /*
-Unfinished, but the default SD.h method by arduino has functionality for this
+Opens and closes communication to device by changing CS state. 
+Opens/creates a file on a FAT32 formatted SD card, and writes string buff to it.
 */
 void SDWrite()
 {
   digitalWrite(SD_CS, LOW);
-  file.println(buff);
+  dataFile = SD.open("test.txt", FILE_WRITE); 
+  if (dataFile){
+    dataFile.println(buff);
+    dataFile.close();
+  } else{
+    Serial.println("could not open file");
+  }
   digitalWrite(SD_CS, HIGH);
 }
 
