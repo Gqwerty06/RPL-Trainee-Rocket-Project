@@ -11,6 +11,7 @@
 #include <Adafruit_Sensor.h>
 #include <MPU6050.h>
 #include <SoftwareSerial.h>
+#include <FS.h>
 
 //pin declares for chip selects
 #define RF_CS 5
@@ -29,7 +30,6 @@ TinyGPSPlus gps;
 RF24 radio; // CE, CSN
 Adafruit_BMP3XX bmp;
 MPU6050 mpu; // Set up IMU
-File dataFile;
 
 SoftwareSerial ss(17, 16); // for the gps
 
@@ -40,7 +40,7 @@ struct data
 };
 data dat1;
 
-String buff, buf;
+String buff;
 
 //method declares for code organization - if you write your methods above where they are declared
 // there is no need for this. 
@@ -48,6 +48,39 @@ String buff, buf;
 void sendData();
 void SDWrite();
 void dataGather();
+
+//fuck ass sd code
+void writeFile(fs::FS &fs, const char * path, const char * message){
+  Serial.printf("Writing file: %s\n", path);
+
+  File file = fs.open(path, FILE_WRITE);
+  if(!file){
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+  if(file.print(message)){
+    Serial.println("File written");
+  } else {
+    Serial.println("Write failed");
+  }
+  file.close();
+}
+
+void appendFile(fs::FS &fs, const char * path, const char * message){
+  Serial.printf("Appending to file: %s\n", path);
+
+  File file = fs.open(path, FILE_APPEND);
+  if(!file){
+    Serial.println("Failed to open file for appending");
+    return;
+  }
+  if(file.print(message)){
+      Serial.println("Message appended");
+  } else {
+    Serial.println("Append failed");
+  }
+  file.close();
+}
 
 void setup()
 {
@@ -74,6 +107,12 @@ void setup()
 
   //refernce altitude for calculation
   refAlt = bmp.readAltitude(1013.25);
+
+  //basic initialization to create file 
+  digitalWrite(SD_CS, LOW);
+  File dataFile = SD.open("/data.txt");
+  writeFile(SD, "/data.txt", "init");
+  digitalWrite(SD_CS, HIGH);
 }
 
 void loop()
@@ -108,18 +147,14 @@ void sendData()
 
 /*
 Opens and closes communication to device by changing CS state. 
-Opens/creates a file on a FAT32 formatted SD card, and writes string buff to it.
+Opens a file on a FAT32 formatted SD card, and writes string buff to it.
 */
 void SDWrite()
 {
   digitalWrite(SD_CS, LOW);
-  dataFile = SD.open("test.txt", FILE_WRITE); 
-  if (dataFile){
-    dataFile.println(buff);
-    dataFile.close();
-  } else{
-    Serial.println("could not open file");
-  }
+  String buf = String(dat1.lat, 6) + "\t" + String(dat1.lon, 6) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum) + "\t" + String(dat1.ax) + "\t" + String(dat1.ay)
+  + "\t" + String(dat1.az) + "\t" + String(dat1.gx) + "\t" + String(dat1.gy) + "\t" + String(dat1.gz) + "\n";
+  appendFile(SD, "/data.txt", buf.c_str());
   digitalWrite(SD_CS, HIGH);
 }
 
@@ -136,6 +171,7 @@ void dataGather()
     {
       dat1.lat= gps.location.lat();
       dat1.lon= gps.location.lng();
+      dat1.satNum = gps.satellites.value();
     }
   }
   //mpu data write
@@ -148,3 +184,4 @@ void dataGather()
 //launch states- change data collection rate and operations
 //Zero sensors at launch site
 //physical seperation between recovery system and power9
+

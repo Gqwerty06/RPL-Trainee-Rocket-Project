@@ -18,6 +18,7 @@ struct data
 {
   int16_t ax, ay, az, gx, gy, gz, satNum;
   float lat, lon, alt;
+  bool cardCon=1;
 };
 data dat1;
 
@@ -46,8 +47,8 @@ void recData()
    if(radio.available())
    {
      radio.read(&dat1, sizeof(data));
-     buf = String(dat1.lat) + "\t" + String(dat1.lon) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum)+"\t" + String(dat1.ax) + "\t" + String(dat1.ay)
-    + "\t" + String(dat1.az) + "\t" + String(dat1.gx) + "\t" + String(dat1.gy) + "\t" + String(dat1.gz);
+     buf = String(dat1.lat, 6) + "\t" + String(dat1.lon, 6) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum)+"\t" + String(dat1.ax) + "\t" + String(dat1.ay)
+    + "\t" + String(dat1.az) + "\t" + String(dat1.gx) + "\t" + String(dat1.gy) + "\t" + String(dat1.gz) + "\t" + String(dat1.cardCon);
      Serial.println("Receiving: ");
      Serial.println(buf);
    }
