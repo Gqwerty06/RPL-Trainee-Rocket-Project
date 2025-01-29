@@ -35,8 +35,9 @@ SoftwareSerial ss(17, 16); // for the gps
 
 struct data
 {
-  int16_t ax, ay, az, gx, gy, gz, satNum;
-  float lat, lon, alt;
+  int16_t ax, ay, az, gx, gy, gz, satNum; //6 axis motion figures from IMU and # of satellites connected
+  float lat, lon, alt; //latitude, longitude, and altitude
+  bool cardCon=1; // boolean to show if SD card is connected
 };
 data dat1;
 
@@ -72,6 +73,7 @@ void appendFile(fs::FS &fs, const char * path, const char * message){
   File file = fs.open(path, FILE_APPEND);
   if(!file){
     Serial.println("Failed to open file for appending");
+    dat1.cardCon = false;
     return;
   }
   if(file.print(message)){
@@ -108,7 +110,7 @@ void setup()
   //refernce altitude for calculation
   refAlt = bmp.readAltitude(1013.25);
 
-  //basic initialization to create file 
+  //basic initialization to create/overwrite file 
   digitalWrite(SD_CS, LOW);
   File dataFile = SD.open("/data.txt");
   writeFile(SD, "/data.txt", "init");
@@ -117,10 +119,11 @@ void setup()
 
 void loop()
 {
-  delay(50);
+  if (millis() % 50){
   dataGather();
   sendData();
   SDWrite();
+  }
 }
 
 /* 
@@ -137,8 +140,8 @@ void sendData()
 {
   digitalWrite(RF_CS, LOW);
   radio.stopListening();
-  buff = String(dat1.lat, 6) + "\t" + String(dat1.lon, 6) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum) + "\t" + String(dat1.ax) + "\t" + String(dat1.ay)
-    + "\t" + String(dat1.az) + "\t" + String(dat1.gx) + "\t" + String(dat1.gy) + "\t" + String(dat1.gz);
+  buff = String(dat1.lat, 6) + "\t" + String(dat1.lon, 6) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum) + "\t" + String(dat1.ax-1224) + "\t" + String(dat1.ay-2621)
+  + "\t" + String(dat1.az+1934) + "\t" + String(dat1.gx-117) + "\t" + String(dat1.gy-41) + "\t" + String(dat1.gz-39) + "\t" + String(dat1.cardCon);
   Serial.println("Sending: ");
   Serial.println(buff);
   radio.write(&dat1, sizeof(data));
@@ -152,8 +155,8 @@ Opens a file on a FAT32 formatted SD card, and writes string buff to it.
 void SDWrite()
 {
   digitalWrite(SD_CS, LOW);
-  String buf = String(dat1.lat, 6) + "\t" + String(dat1.lon, 6) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum) + "\t" + String(dat1.ax) + "\t" + String(dat1.ay)
-  + "\t" + String(dat1.az) + "\t" + String(dat1.gx) + "\t" + String(dat1.gy) + "\t" + String(dat1.gz) + "\n";
+  String buf = String(dat1.lat, 6) + "\t" + String(dat1.lon, 6) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum) + "\t" + String(dat1.ax-1224) + "\t" + String(dat1.ay-2621)
+  + "\t" + String(dat1.az+1934) + "\t" + String(dat1.gx-117) + "\t" + String(dat1.gy-41) + "\t" + String(dat1.gz-39) + "\n";
   appendFile(SD, "/data.txt", buf.c_str());
   digitalWrite(SD_CS, HIGH);
 }
