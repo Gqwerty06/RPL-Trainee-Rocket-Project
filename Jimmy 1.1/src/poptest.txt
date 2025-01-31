@@ -1,54 +1,89 @@
-//nrf RX Code
+//pop test code
 #include <Arduino.h>
-#include <RF24.h>
-#include <nRF24L01.h>
 #include <SPI.h>
 #include <stdarg.h>
 #include <Wire.h>
+/*
+    VERY VERY IMPORTANT!!!
+    DO NOT PLUG IN THE firingPin pin BEFORE pressing EN after giving the ESP32 power!!!
+    Steps should be: 
+    1. Plug in ESP32
+    2. Start Serial Monitor on Computer
+    3. Press EN button to reset program
+    4. Plug in GPIO pin for firingPin
 
-#define CE 
+    Firing Procedure- I coded in 2FA for launch for safety, read below if you need assurance
+    of how I programed this thing
+    1. Input 6 to pass first check. Any nonzero integer input will end the program. Please don't try 
+    characters or strings, I trust you to not be stupid.
+    2. Input 1 to confirm firing. Again please don't try strings.
+    3. That's it. If the onboard blue LED lights then it should have fired. 
 
-RF24 radio; // CE, CS
+    I do not take any responsibility for lost fingers or destroyed property
 
-//declare gyrovars
-bool tf = false;
+    FAQ: 
+    Q. I see wingdings when pressing EN... Should I be concerned?
+    A. Well the code works doesn't it? be concerned and ask me if you can't read 
+    "Input 0 to fire" at the end of the wingdings. Check your baud rate too.
 
-const byte addy[][6] = {"00001","00002"};
-const uint8_t chan = 105;
+    Q. What safety funcitons did you put in this thing?
+    A. Well you have 2FA for fire, and requiring specific inputs I guess. From what I know
+    strings default to 0 on parsein, so neither inputs being 0 is safe maybe? Pretty much nothing
+    else though. I'm not a CS major
 
-/*struct data
-{
-  int16_t ax, ay, az, gx, gy, gz;
-};
-data dat1, dat2;
+    Q. Can I do this in Jimmy's bedroom?
+    A. Yes! The intent of this program is to cause as much property damage to Jimmy as possible
+    while maintaining relative safety to whoever wants to run this program.
+
+    If this program works as intended, Written by Gabriel Qu.
+    If not, written by Andrew Ore.
 */
-//void recData();
-void pop();
+bool pop();
 
-#define LED 2
+#define firingPin 5 //change if changing GPIO pin to fire
+
+//Press the physical EN button on the ESP32 after starting serial monitor!!!
 void setup() {
   // Set pin mode
-  pinMode(LED,OUTPUT);
+  pinMode(firingPin,OUTPUT);
+  pinMode(2, OUTPUT);
+  digitalWrite(firingPin, LOW);
   Serial.begin(115200);
+
+  if (pop()){
+    Serial.println("firing");
+    digitalWrite(firingPin, HIGH);
+    digitalWrite(2, HIGH);
+    Serial.println("Fire successful. Press EN again to reset");
+  } else{
+    Serial.println("Fire aborted. Press EN again to reset");
+  }
 }
 
 void loop() {
-  pop();
-  while (tf == true){
-  delay(500);
-  digitalWrite(LED,HIGH);
-  delay(500);
-  digitalWrite(LED,LOW);
-  }
+  //nothing
 }
 
-void pop(){
-  while (Serial.available() == 0) {
+bool pop(){
+  Serial.println("Input 6 to fire");
+  int num1 = 12;
+  while (Serial.available() ==0){
   }
-  int num1 = Serial.parseInt();
-  if (num1 == 0){
-    tf = true;
-  } else {
+  num1 = Serial.parseInt();
+  if (num1 == 6){
+    Serial.println("Are you sure? 1 for yes");
+    int conf = 0;
+    while (Serial.available() == 0) {
+    }
+    conf = Serial.parseInt();
+    if (conf ==1){
+      return true;
+    } else{
+      Serial.println("denied");
+      return false;
+    }
+  }else {
     Serial.println("denied");
+    return false;
   }
 }
