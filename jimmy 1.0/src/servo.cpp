@@ -1,5 +1,5 @@
 #include <Wire.h>
-#include <Servo.h>
+#include <Esp32Servo.h>
 #include <MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP3XX.h>
@@ -24,7 +24,7 @@ const int servoPitchPin = 9; // Pin for pitch servo
 const int servoYawPin = 10;  // Pin for yaw servo
 
 // Sensors
-Adafruit_MPU6050 mpu;
+MPU6050 mpu;
 Adafruit_BMP3XX bmp;
 
 // Variables
@@ -41,6 +41,9 @@ unsigned long last_update_time = 0;
 // PID state variables
 double previous_error = 0.0;
 double integral = 0.0;
+double timeCount = 0.0;
+double altitude = 0.0;
+double setpoint = 0.0; 
 
 void setup() {
     Serial.begin(115200);
@@ -49,36 +52,9 @@ void setup() {
     servoPitch.attach(servoPitchPin);
     servoYaw.attach(servoYawPin);
 
-    // MPU6050 initialization
-    if (!mpu.begin()) {
-        Serial.println("Failed to initialize MPU6050!");
-        while (1);
-    }
-
-    // BMP390 initialization
-    if (!bmp.begin_I2C()) {
-        Serial.println("Failed to initialize BMP390!");
-        while (1);
-    }
-
-    bmp.setPressureOversampling(BMP3_OVERSAMPLING_8X);
-    bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_2X);
-    bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
-    bmp.setOutputDataRate(BMP3_ODR_50_HZ);
-
     last_update_time = millis();
 
- static double time = 0.0;
-        double altitude = 0.0;
-        sensors_event_t a, g, temp;
-
-double setpoint = 0.0; // 
-
-
-
-
-
-
+    sensors_event_t a, g, temp;
 }
 
 void loop() {
@@ -88,16 +64,13 @@ void loop() {
 
        
         // Read sensors
-        mpu.getEvent(&a, &g, &temp);
-
-
         if (bmp.performReading()) {
             altitude = bmp.readAltitude(1013.25); // Standard sea level pressure
         }
 
         // Define setpoint (desired pitch angle, in degrees)
                 if (altitude > 500.0) {
-            setpoint = 10.0; // Change to to above 500m
+                    setpoint = 10.0; // Change to to above 500m
         }
 
         // Calculate angular acceleration for pitch
@@ -145,7 +118,8 @@ void loop() {
         servoYaw.write(map(gimbal_angle_yaw_deg, -10, 10, 0, 180));
 
         // Print results
-        Serial.print("Time: "); Serial.print(time);
+        Serial.print("Time: "); 
+        Serial.print(timeCount);
         Serial.print(" s\tAltitude: "); Serial.print(altitude);
         Serial.print(" m\tPitch Angle: "); Serial.print(pitch_angle * 180.0 / M_PI);
         Serial.print(" deg\tSetpoint: "); Serial.print(setpoint);
@@ -155,6 +129,6 @@ void loop() {
         previous_error = error;
 
         // Increment time
-        time += time_step;
+        timeCount += time_step;
     }
 }
