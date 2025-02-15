@@ -1,8 +1,7 @@
 #include <Wire.h>
-#include <Esp32Servo.h>
+#include <I2Cdev.h>
 #include <MPU6050.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP3XX.h>
+#include <ESP32Servo.h>
 
 // Constants
 const double mass = 1.5;           // Rocket mass (kg)
@@ -25,25 +24,23 @@ const int servoYawPin = 10;  // Pin for yaw servo
 
 // Sensors
 MPU6050 mpu;
-Adafruit_BMP3XX bmp;
 
 // Variables
+unsigned long last_update_time = 0;
+double time = 0.0;
 double gimbal_angle_pitch_deg = 0.0;
 double gimbal_angle_yaw_deg = 0.0;
-double angular_accel_pitch = 0.0;  // Angular acceleration about pitch axis
-double angular_velocity_pitch = 0.0; // Angular velocity (rad/s)
 double pitch_angle = 0.0; // Pitch angle (rad)
+double angular_velocity_pitch = 0.0; // Angular velocity from gyroscope
+
+// State variables for positions and velocities
 double accel_x = 0.0, accel_z = 0.0; // Accelerations in X and Z directions
 double velocity_x = 0.0, velocity_z = 0.0; // Velocities in X and Z directions
 double position_x = 0.0, position_z = 0.0; // Positions in X and Z directions
-unsigned long last_update_time = 0;
 
 // PID state variables
 double previous_error = 0.0;
 double integral = 0.0;
-double timeCount = 0.0;
-double altitude = 0.0;
-double setpoint = 0.0; 
 
 void setup() {
     Serial.begin(115200);
@@ -52,9 +49,15 @@ void setup() {
     servoPitch.attach(servoPitchPin);
     servoYaw.attach(servoYawPin);
 
-    last_update_time = millis();
+    // MPU6050 initialization
+    Wire.begin();
+    mpu.initialize();
+    if (!mpu.testConnection()) {
+        Serial.println("Failed to initialize MPU6050!");
+        while (1);
+    }
 
-    sensors_event_t a, g, temp;
+    last_update_time = millis();
 }
 
 void loop() {
@@ -62,29 +65,28 @@ void loop() {
     if (current_time - last_update_time >= time_step * 1000) {
         last_update_time = current_time;
 
-       
-        // Read sensors
-        if (bmp.performReading()) {
-            altitude = bmp.readAltitude(1013.25); // Standard sea level pressure
-        }
+        // Read MPU6050 data
+        int16_t ax, ay, az;
+        int16_t gx, gy, gz;
+        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
-        // Define setpoint (desired pitch angle, in degrees)
-                if (altitude > 500.0) {
-                    setpoint = 10.0; // Change to to above 500m
-        }
+        // Convert accelerometer data (ax, ay, az) to tilt angle
+        double tilt_angle = atan2(ay, az) * radian_conversion; // Tilt angle in radians
 
-        // Calculate angular acceleration for pitch
-        double gimbal_angle_pitch_rad = gimbal_angle_pitch_deg * radian_conversion;
-        angular_accel_pitch = (gimbal_force * distance * cos(gimbal_angle_pitch_rad)) / inertia;
+        // Convert gyroscope data to angular velocity (rad/s)
+        angular_velocity_pitch = gy / 131.0 * radian_conversion;
 
-        // Integrate angular acceleration to get angular velocity
-        angular_velocity_pitch += angular_accel_pitch * time_step;
-
-        // Integrate angular velocity to get pitch angle
+        // Update pitch angle by integrating angular velocity
         pitch_angle += angular_velocity_pitch * time_step;
 
+        // Define setpoint (desired pitch angle, in degrees)
+        double setpoint = 10.0; // Desired pitch angle after 500m altitude
+        if (position_z <= 500.0) {
+            setpoint = 0.0; // Keep upright below 500m
+        }
+
         // Calculate error for PID control (setpoint in radians)
-        double error = setpoint * radian_conversion - pitch_angle;
+        double error = (setpoint * radian_conversion) - pitch_angle;
 
         // PID calculations
         integral += error * time_step;
@@ -97,19 +99,19 @@ void loop() {
 
         gimbal_angle_pitch_deg = output;
 
-        // Calculate forces in X and Z
-        double force_x = gimbal_force * cos(pitch_angle);
-        double force_z = gimbal_force * sin(pitch_angle);
+        // Calculate forces in X and Z based on gimbal pitch angle
+        double force_x = gimbal_force * cos(gimbal_angle_pitch_deg * radian_conversion);
+        double force_z = gimbal_force * sin(gimbal_angle_pitch_deg * radian_conversion);
 
         // Calculate accelerations
         accel_x = force_x / mass;
         accel_z = force_z / mass;
 
-        // Integrate to find velocities
+        // Integrate accelerations to find velocities
         velocity_x += accel_x * time_step;
         velocity_z += accel_z * time_step;
 
-        // Integrate to find positions
+        // Integrate velocities to find positions
         position_x += velocity_x * time_step;
         position_z += velocity_z * time_step;
 
@@ -118,16 +120,17 @@ void loop() {
         servoYaw.write(map(gimbal_angle_yaw_deg, -10, 10, 0, 180));
 
         // Print results
-        Serial.print("Time: "); Serial.print(timeCount);
-        Serial.print(" s\tAltitude: "); Serial.print(altitude);
-        Serial.print(" m\tPitch Angle: "); Serial.print(pitch_angle * 180.0 / M_PI);
+        Serial.print("Time: "); Serial.print(time);
+        Serial.print(" s\tPitch Angle: "); Serial.print(pitch_angle * 180.0 / M_PI);
         Serial.print(" deg\tSetpoint: "); Serial.print(setpoint);
         Serial.print(" deg\tOutput: "); Serial.println(output);
+        Serial.print("Tilt Angle: "); Serial.print(tilt_angle * 180.0 / M_PI);
+        Serial.print(" deg\tPosition Z: "); Serial.println(position_z);
 
         // Save current error for next loop
         previous_error = error;
 
         // Increment time
-        timeCount += time_step;
+        time += time_step;
     }
 }
