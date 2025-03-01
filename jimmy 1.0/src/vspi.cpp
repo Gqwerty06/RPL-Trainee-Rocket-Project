@@ -31,7 +31,7 @@ const double Kd = 0.05; // Derivative gain
 
 // Variables
 unsigned long last_update_time = 0;
-double time = 0.0;
+double timeC = 0.0;
 double gimbal_angle_pitch_deg = 0.0;
 double gimbal_angle_yaw_deg = 0.0;
 double pitch_angle = 0.0; // Pitch angle (rad)
@@ -55,8 +55,8 @@ const int servoYawPin = 10;  // Pin for yaw servo
 
 
 //pin declares for chip selects
-#define RF_CS 5
-#define SD_CS 33
+#define RF_CS 4
+#define SD_CS 5
 
 //radio setups
 const byte addy[][6] = {"00001","00002"};
@@ -68,7 +68,7 @@ float refAlt;
 
 //Module declares
 SoftwareSerial gpsSerial(17, 16); //gps is UART so different? TBH I'm not that sure
-//TinyGPSPlus gps;
+TinyGPSPlus gps;
 RF24 radio; // CE, CSN
 Adafruit_BMP3XX bmp;
 MPU6050 mpu; // Set up IMU
@@ -161,7 +161,7 @@ void setup()
   Serial.begin(115200);
 
   //radio initializations
-  radio.begin(4,5);
+  radio.begin(4,13);
   radio.setPALevel(RF24_PA_MAX, 0);
   radio.setChannel(chan);
   Serial.println("Starting to send: ");
@@ -171,7 +171,7 @@ void setup()
   Wire.begin();
   bmp.begin_I2C();
   mpu.initialize();
-  //gpsSerial.begin(9600); // connect gps sensor, default baud rate for L80 is 9600
+  gpsSerial.begin(9600); // connect gps sensor, default baud rate for L80 is 9600
   SD.begin(SD_CS);
 
   //BMP390 setup- oversampling and filtering
@@ -253,9 +253,9 @@ void loop()
 {
   if (millis() % 25){
   dataGather();
-  sendData();
+  //sendData();
   SDWrite();
-  servoMode();
+  //servoMode();
   }
 }
 
@@ -287,6 +287,7 @@ Opens a file on a FAT32 formatted SD card, and writes string buff to it.
 */
 void SDWrite()
 {
+  
   digitalWrite(SD_CS, LOW);
   String buf = String(dat1.lat, 6) + "\t" + String(dat1.lon, 6) + "\t" + String(dat1.alt) + "\t" + String(dat1.satNum) + "\t" + String(dat1.ax-1224) + "\t" + String(dat1.ay-2621)
   + "\t" + String(dat1.az+1934) + "\t" + String(dat1.gx-117) + "\t" + String(dat1.gy-41) + "\t" + String(dat1.gz-39) + "\n";
@@ -301,17 +302,20 @@ we use the BMP390, the jimmy IMU (BMP085?)and the Quectal L80 GPS
 void dataGather()
 {
   //lat long data get- this code uses the tinyGPSPLus Lib, check parts for compatabilty 
-  /*
+  
    while (gpsSerial.available())     // check for gps data
   {
     if (gps.encode(gpsSerial.read()))   // encode gps data
     {
       dat1.lat= gps.location.lat();
+      Serial.println(dat1.lat);
       dat1.lon= gps.location.lng();
+      Serial.println(dat1.lon);
       dat1.satNum = gps.satellites.value();
+      Serial.println(dat1.satNum);
     }
   }
-  */
+  
   //mpu data write
 
   mpu.getMotion6(&dat1.ax, &dat1.ay, &dat1.az, &dat1.gx, &dat1.gy, &dat1.gz);
@@ -406,7 +410,7 @@ void servoMode(){
       servoYaw.write(map(gimbal_angle_yaw_deg, -10, 10, 0, 180));
 
       // Print results
-      Serial.print("Time: "); Serial.print(time);
+      Serial.print("Time: "); Serial.print(timeC);
       Serial.print(" s\tPitch Angle: "); Serial.print(pitch_angle * 180.0 / M_PI);
       Serial.print(" deg\tSetpoint: "); Serial.print(setpoint);
       Serial.print(" deg\tOutput: "); Serial.println(output);
@@ -417,7 +421,7 @@ void servoMode(){
       previous_error = error;
 
       // Increment time
-      time += time_step;
+      timeC += time_step;
   } 
 }
 
